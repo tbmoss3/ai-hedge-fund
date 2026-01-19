@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python311", "postgresql"]
+
+[phases.install]
+cmds = ["pip install poetry", "poetry config virtualenvs.create false", "poetry install --no-interaction"]
+
+[start]
+cmd = "uvicorn app.backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+
+[variables]
+PYTHONPATH = "/app"
