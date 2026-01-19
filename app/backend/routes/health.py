@@ -11,6 +11,12 @@ async def root():
     return {"message": "Welcome to AI Hedge Fund API"}
 
 
+@router.get("/health")
+async def health():
+    """Health check endpoint for Railway."""
+    return {"status": "healthy"}
+
+
 @router.get("/ping")
 async def ping():
     async def event_generator():
