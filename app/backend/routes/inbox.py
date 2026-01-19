@@ -19,6 +19,17 @@ from app.backend.models.research_schemas import (
 router = APIRouter(prefix="/inbox", tags=["inbox"])
 
 
+@router.get("/count")
+async def get_pending_count(db: Session = Depends(get_db)):
+    """Get count of pending memos in inbox"""
+    try:
+        service = InboxService(db)
+        memos, total = service.get_pending_memos(page=1, page_size=1)
+        return {"count": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get count: {str(e)}")
+
+
 @router.get(
     "/",
     response_model=MemoListResponse,

@@ -15,8 +15,10 @@ from app.backend.routes.analysts import router as analysts_router
 # Main API router
 api_router = APIRouter()
 
-# Include sub-routers
+# Health routes at root level (for Railway healthcheck)
 api_router.include_router(health_router, tags=["health"])
+
+# Original routes (no prefix for backwards compatibility)
 api_router.include_router(hedge_fund_router, tags=["hedge-fund"])
 api_router.include_router(storage_router, tags=["storage"])
 api_router.include_router(flows_router, tags=["flows"])
@@ -24,6 +26,8 @@ api_router.include_router(flow_runs_router, tags=["flow-runs"])
 api_router.include_router(ollama_router, tags=["ollama"])
 api_router.include_router(language_models_router, tags=["language-models"])
 api_router.include_router(api_keys_router, tags=["api-keys"])
-api_router.include_router(inbox_router, tags=["inbox"])
-api_router.include_router(investments_router, tags=["investments"])
-api_router.include_router(analysts_router, tags=["analysts"])
+
+# Research routes with /api prefix (for Vercel frontend)
+api_router.include_router(inbox_router, prefix="/api", tags=["inbox"])
+api_router.include_router(investments_router, prefix="/api", tags=["investments"])
+api_router.include_router(analysts_router, prefix="/api", tags=["analysts"])

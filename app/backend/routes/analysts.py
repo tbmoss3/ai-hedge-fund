@@ -13,6 +13,17 @@ from app.backend.models.research_schemas import (
 router = APIRouter(prefix="/analysts", tags=["analysts"])
 
 
+@router.get("/")
+async def list_analysts():
+    """Get list of available AI analysts"""
+    try:
+        from src.utils.analysts import get_agents_list
+        agents = get_agents_list()
+        return {"analysts": [a["key"] for a in agents]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list analysts: {str(e)}")
+
+
 @router.get(
     "/leaderboard",
     response_model=LeaderboardResponse,

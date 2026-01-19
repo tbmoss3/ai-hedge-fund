@@ -170,7 +170,7 @@ export const researchApi = {
    */
   getMemo: async (id: string): Promise<Memo> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/memos/${id}`);
+      const response = await fetch(`${API_BASE_URL}/api/inbox/${id}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
