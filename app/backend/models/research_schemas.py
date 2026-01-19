@@ -167,3 +167,8 @@ class RejectionResponse(BaseModel):
     """Response after rejecting a memo"""
     memo: MemoResponse
     message: str = "Memo rejected"
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response"""
+    detail: str
