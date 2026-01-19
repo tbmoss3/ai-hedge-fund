@@ -3,17 +3,30 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 import json
+from typing import Optional
 from typing_extensions import Literal
-from src.tools.api import get_financial_metrics, get_market_cap, search_line_items
+from src.tools.api import get_financial_metrics, get_market_cap, search_line_items, get_prices
 from src.utils.llm import call_llm
 from src.utils.progress import progress
 from src.utils.api_key import get_api_key_from_state
+from src.agents.memo_schema import InvestmentMemo, should_generate_memo, generate_investment_memo
 
 
 class WarrenBuffettSignal(BaseModel):
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: int = Field(description="Confidence 0-100")
     reasoning: str = Field(description="Reasoning for the decision")
+
+
+class WarrenBuffettMemoOutput(BaseModel):
+    """Extended output model for generating investment memos."""
+    signal: Literal["bullish", "bearish", "neutral"]
+    confidence: int = Field(description="Confidence 0-100")
+    reasoning: str = Field(description="Reasoning for the decision")
+    thesis: str = Field(description="2-3 sentence investment thesis")
+    bull_case: list[str] = Field(description="3 bullet points for bull case")
+    bear_case: list[str] = Field(description="3 bullet points for bear case")
+    target_price: float = Field(description="Target price based on owner earnings DCF")
 
 
 def warren_buffett_agent(state: AgentState, agent_id: str = "warren_buffett_agent"):
@@ -824,3 +837,238 @@ def generate_buffett_output(
         state=state,
         default_factory=create_default_warren_buffett_signal,
     )
+
+
+def generate_buffett_memo(
+        ticker: str,
+        analysis_data: dict[str, any],
+        current_price: float,
+        state: AgentState,
+        agent_id: str = "warren_buffett_agent",
+) -> WarrenBuffettMemoOutput:
+    """Generate full investment memo with thesis, bull/bear cases, and target price."""
+
+    # Calculate target price from intrinsic value analysis
+    intrinsic_value = analysis_data.get("intrinsic_value_analysis", {}).get("intrinsic_value")
+    market_cap = analysis_data.get("market_cap")
+    shares_outstanding = None
+
+    # Try to get shares outstanding for per-share target price
+    if analysis_data.get("intrinsic_value_analysis", {}).get("owner_earnings"):
+        # Estimate shares from market cap and current price
+        if market_cap and current_price and current_price > 0:
+            shares_outstanding = market_cap / current_price
+
+    # Calculate target price per share
+    if intrinsic_value and shares_outstanding and shares_outstanding > 0:
+        target_price_estimate = intrinsic_value / shares_outstanding
+    else:
+        # Fallback: use margin of safety to estimate target
+        margin_of_safety = analysis_data.get("margin_of_safety", 0)
+        target_price_estimate = current_price * (1 + margin_of_safety) if margin_of_safety else current_price * 1.15
+
+    # Build facts for memo generation
+    facts = {
+        "score": analysis_data.get("score"),
+        "max_score": analysis_data.get("max_score"),
+        "fundamentals": analysis_data.get("fundamental_analysis", {}).get("details"),
+        "consistency": analysis_data.get("consistency_analysis", {}).get("details"),
+        "moat": analysis_data.get("moat_analysis", {}).get("details"),
+        "pricing_power": analysis_data.get("pricing_power_analysis", {}).get("details"),
+        "book_value": analysis_data.get("book_value_analysis", {}).get("details"),
+        "management": analysis_data.get("management_analysis", {}).get("details"),
+        "intrinsic_value": intrinsic_value,
+        "market_cap": market_cap,
+        "margin_of_safety": analysis_data.get("margin_of_safety"),
+        "current_price": current_price,
+        "target_price_estimate": target_price_estimate,
+    }
+
+    template = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """You are Warren Buffett generating a detailed investment memo.
+
+Based on the analysis facts, create a comprehensive investment memo with:
+1. A clear bullish or bearish signal (not neutral - pick a direction)
+2. Confidence level 0-100
+3. A 2-3 sentence investment thesis summarizing the key investment case
+4. Exactly 3 bullet points for the bull case
+5. Exactly 3 bullet points for the bear case
+6. A target price based on the owner earnings DCF valuation
+
+Focus on:
+- Circle of competence and business understanding
+- Durable competitive moat (brand, switching costs, network effects)
+- Management quality and capital allocation
+- Intrinsic value vs current price
+- Long-term compounding potential
+
+Return JSON only with exactly these fields:
+{
+  "signal": "bullish" or "bearish",
+  "confidence": int 0-100,
+  "reasoning": "brief reasoning",
+  "thesis": "2-3 sentence investment thesis",
+  "bull_case": ["point 1", "point 2", "point 3"],
+  "bear_case": ["point 1", "point 2", "point 3"],
+  "target_price": float
+}"""
+            ),
+            (
+                "human",
+                "Ticker: {ticker}\nFacts:\n{facts}\n\nGenerate the investment memo JSON."
+            ),
+        ]
+    )
+
+    prompt = template.invoke({
+        "facts": json.dumps(facts, indent=2),
+        "ticker": ticker,
+    })
+
+    def create_default_memo():
+        return WarrenBuffettMemoOutput(
+            signal="neutral",
+            confidence=50,
+            reasoning="Insufficient data for full memo",
+            thesis="Unable to generate thesis due to insufficient data.",
+            bull_case=["Data unavailable", "Data unavailable", "Data unavailable"],
+            bear_case=["Data unavailable", "Data unavailable", "Data unavailable"],
+            target_price=target_price_estimate if target_price_estimate else current_price
+        )
+
+    return call_llm(
+        prompt=prompt,
+        pydantic_model=WarrenBuffettMemoOutput,
+        agent_name=agent_id,
+        state=state,
+        default_factory=create_default_memo,
+    )
+
+
+def run_warren_buffett_with_memo(
+    state: AgentState,
+    agent_id: str = "warren_buffett_agent"
+) -> tuple[dict, dict[str, Optional[InvestmentMemo]]]:
+    """
+    Run Warren Buffett analysis and generate InvestmentMemo if conviction >= 70%.
+
+    Returns:
+        tuple: (analysis_dict, dict of ticker -> InvestmentMemo or None)
+    """
+    data = state["data"]
+    end_date = data["end_date"]
+    tickers = data["tickers"]
+    api_key = get_api_key_from_state(state, "FINANCIAL_DATASETS_API_KEY")
+
+    memos = {}
+
+    # Run the standard agent first
+    result = warren_buffett_agent(state, agent_id)
+
+    for ticker in tickers:
+        # Get current price
+        prices = get_prices(ticker, end_date=end_date, limit=1, api_key=api_key)
+        current_price = prices[0].close if prices else 0.0
+
+        # Get the analysis for this ticker
+        analysis = state["data"]["analyst_signals"].get(agent_id, {}).get(ticker, {})
+        confidence = analysis.get("confidence", 0)
+        signal = analysis.get("signal", "neutral")
+
+        # Check if we should generate a memo
+        if should_generate_memo(confidence) and signal != "neutral":
+            progress.update_status(agent_id, ticker, "Generating investment memo")
+
+            # Get the detailed analysis data
+            metrics = get_financial_metrics(ticker, end_date, period="ttm", limit=10, api_key=api_key)
+            financial_line_items = search_line_items(
+                ticker,
+                [
+                    "capital_expenditure", "depreciation_and_amortization", "net_income",
+                    "outstanding_shares", "total_assets", "total_liabilities",
+                    "shareholders_equity", "dividends_and_other_cash_distributions",
+                    "issuance_or_purchase_of_equity_shares", "gross_profit", "revenue", "free_cash_flow",
+                ],
+                end_date, period="ttm", limit=10, api_key=api_key,
+            )
+            market_cap = get_market_cap(ticker, end_date, api_key=api_key)
+
+            # Rebuild analysis data
+            fundamental_analysis = analyze_fundamentals(metrics)
+            consistency_analysis = analyze_consistency(financial_line_items)
+            moat_analysis = analyze_moat(metrics)
+            pricing_power_analysis = analyze_pricing_power(financial_line_items, metrics)
+            book_value_analysis = analyze_book_value_growth(financial_line_items)
+            mgmt_analysis = analyze_management_quality(financial_line_items)
+            intrinsic_value_analysis = calculate_intrinsic_value(financial_line_items)
+
+            total_score = (
+                fundamental_analysis["score"] + consistency_analysis["score"] +
+                moat_analysis["score"] + mgmt_analysis["score"] +
+                pricing_power_analysis["score"] + book_value_analysis["score"]
+            )
+            max_possible_score = 10 + moat_analysis["max_score"] + mgmt_analysis["max_score"] + 5 + 5
+
+            margin_of_safety = None
+            intrinsic_value = intrinsic_value_analysis.get("intrinsic_value")
+            if intrinsic_value and market_cap:
+                margin_of_safety = (intrinsic_value - market_cap) / market_cap
+
+            analysis_data = {
+                "ticker": ticker,
+                "score": total_score,
+                "max_score": max_possible_score,
+                "fundamental_analysis": fundamental_analysis,
+                "consistency_analysis": consistency_analysis,
+                "moat_analysis": moat_analysis,
+                "pricing_power_analysis": pricing_power_analysis,
+                "book_value_analysis": book_value_analysis,
+                "management_analysis": mgmt_analysis,
+                "intrinsic_value_analysis": intrinsic_value_analysis,
+                "market_cap": market_cap,
+                "margin_of_safety": margin_of_safety,
+            }
+
+            # Generate memo
+            memo_output = generate_buffett_memo(
+                ticker=ticker,
+                analysis_data=analysis_data,
+                current_price=current_price,
+                state=state,
+                agent_id=agent_id,
+            )
+
+            # Build key metrics for Buffett
+            key_metrics = {
+                "roe": fundamental_analysis.get("metrics", {}).get("return_on_equity"),
+                "debt_to_equity": fundamental_analysis.get("metrics", {}).get("debt_to_equity"),
+                "operating_margin": fundamental_analysis.get("metrics", {}).get("operating_margin"),
+                "intrinsic_value": intrinsic_value,
+                "margin_of_safety": margin_of_safety,
+                "owner_earnings": intrinsic_value_analysis.get("owner_earnings"),
+                "moat_score": moat_analysis.get("score"),
+            }
+
+            # Create the InvestmentMemo
+            memo = generate_investment_memo(
+                ticker=ticker,
+                analyst="Warren Buffett",
+                signal=memo_output.signal,
+                conviction=memo_output.confidence,
+                current_price=current_price,
+                target_price=memo_output.target_price,
+                time_horizon="long",  # Buffett is always long-term
+                thesis=memo_output.thesis,
+                bull_case=memo_output.bull_case,
+                bear_case=memo_output.bear_case,
+                metrics=key_metrics,
+            )
+
+            memos[ticker] = memo
+        else:
+            memos[ticker] = None
+
+    return state["data"]["analyst_signals"].get(agent_id, {}), memos

@@ -1,0 +1,189 @@
+# Scanner Configuration
+# Settings for the bi-weekly stock rotation scanner
+
+scanner:
+  # Conviction threshold (0-100)
+  # Only stocks with analyst conviction >= this value generate memos
+  conviction_threshold: 70
+
+  # Number of tickers to process per batch
+  batch_size: 100
+
+  # Seconds to wait between batches (rate limiting)
+  rate_limit_delay: 1.0
+
+  # Maximum retries for failed API calls
+  max_retries: 3
+
+  # Timeout per ticker analysis (seconds)
+  timeout_per_ticker: 60.0
+
+# Scheduling configuration
+schedule:
+  # Scan frequency: daily, weekly, biweekly, monthly
+  frequency: biweekly
+
+  # Day of week for weekly/biweekly scans (0=Monday, 6=Sunday)
+  day: 0  # Monday
+
+  # Hour of day to run (24-hour format, in UTC)
+  hour: 6  # 6 AM UTC
+
+  # Minute of hour
+  minute: 0
+
+  # Enable/disable scheduled scans
+  enabled: true
+
+# Event-based triggers for re-analysis
+triggers:
+  # Price movement threshold (decimal)
+  # Triggers re-analysis if stock moves more than this in a day
+  price_move_threshold: 0.05  # 5%
+
+  # Enable price-based triggers
+  price_triggers_enabled: true
+
+  # Volume spike threshold (multiple of average)
+  volume_spike_threshold: 3.0
+
+  # Enable volume-based triggers
+  volume_triggers_enabled: false
+
+  # News sentiment triggers
+  news_triggers_enabled: false
+
+# Analyst configuration
+analysts:
+  # Default analysts to use for scans
+  # These are value-oriented analysts best suited for bi-weekly rotation
+  default:
+    - warren_buffett
+    - charlie_munger
+    - peter_lynch
+    - phil_fisher
+    - michael_burry
+    - bill_ackman
+    - stanley_druckenmiller
+
+  # Growth-focused analysts (for growth scans)
+  growth:
+    - cathie_wood
+    - growth_analyst
+    - peter_lynch
+
+  # Value-focused analysts (for deep value scans)
+  value:
+    - warren_buffett
+    - charlie_munger
+    - ben_graham
+    - mohnish_pabrai
+
+  # Technical analysts (for momentum scans)
+  technical:
+    - technical_analyst
+    - sentiment_analyst
+
+  # Full analysis (all analysts)
+  full:
+    - warren_buffett
+    - charlie_munger
+    - peter_lynch
+    - phil_fisher
+    - michael_burry
+    - bill_ackman
+    - stanley_druckenmiller
+    - cathie_wood
+    - ben_graham
+    - aswath_damodaran
+    - mohnish_pabrai
+    - rakesh_jhunjhunwala
+    - technical_analyst
+    - fundamentals_analyst
+    - growth_analyst
+    - sentiment_analyst
+    - valuation_analyst
+
+# Output configuration
+output:
+  # Directory to save scan results
+  results_dir: ".cache/scans"
+
+  # Save detailed analysis data
+  save_analysis_data: true
+
+  # Generate summary report
+  generate_summary: true
+
+  # Formats to export
+  export_formats:
+    - json
+    - csv
+
+# LLM configuration for scans
+llm:
+  # Default model for scanning
+  model_name: "gpt-4.1"
+  model_provider: "OpenAI"
+
+  # Temperature for analysis (lower = more consistent)
+  temperature: 0.3
+
+  # Maximum tokens per analysis
+  max_tokens: 2000
+
+# Notification settings (for scheduled scans)
+notifications:
+  # Enable email notifications
+  email_enabled: false
+
+  # Email recipients (comma-separated)
+  email_recipients: ""
+
+  # Only notify on high-conviction findings
+  notify_on_high_conviction_only: true
+
+  # Minimum conviction to trigger notification
+  notification_threshold: 80
+
+# Universe settings
+universe:
+  # Default universe to scan
+  default: "sp500"
+
+  # Available universes
+  available:
+    - sp500
+    - russell2000_sample
+    - custom
+
+  # Auto-refresh universe constituents
+  auto_refresh: true
+
+  # Days between universe refresh
+  refresh_interval_days: 7
+
+# Performance settings
+performance:
+  # Enable parallel processing
+  parallel_enabled: true
+
+  # Maximum concurrent tasks
+  max_concurrent: 5
+
+  # Enable caching of API responses
+  caching_enabled: true
+
+  # Cache TTL in seconds (1 day)
+  cache_ttl: 86400
+
+# Logging settings
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
+
+  # Log scan progress
+  log_progress: true
+
+  # Log individual ticker analysis
+  log_ticker_analysis: false

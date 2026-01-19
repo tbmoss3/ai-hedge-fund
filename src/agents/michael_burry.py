@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import json
+from typing import Optional
 from typing_extensions import Literal
 
 from src.graph.state import AgentState, show_agent_reasoning
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.tools.api import (
     get_company_news,
@@ -15,10 +16,12 @@ from src.tools.api import (
     get_insider_trades,
     get_market_cap,
     search_line_items,
+    get_prices,
 )
 from src.utils.llm import call_llm
 from src.utils.progress import progress
 from src.utils.api_key import get_api_key_from_state
+from src.agents.memo_schema import InvestmentMemo, should_generate_memo, generate_investment_memo
 
 
 class MichaelBurrySignal(BaseModel):
@@ -28,6 +31,18 @@ class MichaelBurrySignal(BaseModel):
     confidence: float  # 0–100
     reasoning: str
 
+
+
+
+class MichaelBurryMemoOutput(BaseModel):
+    """Extended output model for generating investment memos."""
+    signal: Literal["bullish", "bearish", "neutral"]
+    confidence: int = Field(description="Confidence 0-100")
+    reasoning: str = Field(description="Reasoning for the decision")
+    thesis: str = Field(description="2-3 sentence investment thesis")
+    bull_case: list[str] = Field(description="3 bullet points for bull case")
+    bear_case: list[str] = Field(description="3 bullet points for bear case")
+    target_price: float = Field(description="Target price based on valuation")
 
 def michael_burry_agent(state: AgentState, agent_id: str = "michael_burry_agent"):
     """Analyse stocks using Michael Burry's deep‑value, contrarian framework."""
@@ -374,3 +389,182 @@ def _generate_burry_output(
         state=state,
         default_factory=create_default_michael_burry_signal,
     )
+
+def generate_michael_burry_memo(
+        ticker: str,
+        analysis_data: dict[str, any],
+        current_price: float,
+        state: AgentState,
+        agent_id: str = "michael_burry_agent",
+) -> MichaelBurryMemoOutput:
+    """Generate full investment memo with thesis, bull/bear cases, and target price."""
+
+    # Get valuation data for target price calculation
+    market_cap = analysis_data.get("market_cap")
+
+    # Calculate target price estimate based on available data
+    if market_cap and current_price and current_price > 0:
+        shares_outstanding = market_cap / current_price
+        # Use valuation analysis if available
+        val_analysis = analysis_data.get("valuation_analysis", {})
+        intrinsic_range = val_analysis.get("intrinsic_value_range", {})
+        reasonable_value = intrinsic_range.get("reasonable")
+        if reasonable_value and shares_outstanding > 0:
+            target_price_estimate = reasonable_value / shares_outstanding
+        else:
+            # Fallback: estimate based on margin of safety or 15% upside
+            mos = val_analysis.get("margin_of_safety_vs_fair_value", 0) or 0
+            target_price_estimate = current_price * (1 + max(mos, 0.15))
+    else:
+        target_price_estimate = current_price * 1.15 if current_price else 0.0
+
+    # Build facts for memo generation
+    facts = {
+        "score": analysis_data.get("score"),
+        "max_score": analysis_data.get("max_score"),
+        "signal": analysis_data.get("signal"),
+        "analysis_details": {k: v.get("details") if isinstance(v, dict) else str(v)[:200]
+                            for k, v in analysis_data.items() if k.endswith("_analysis")},
+        "market_cap": market_cap,
+        "current_price": current_price,
+        "target_price_estimate": target_price_estimate,
+    }
+
+    template = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """You are Michael Burry generating a detailed investment memo.
+
+Based on the analysis facts, create a comprehensive investment memo with:
+1. A clear bullish or bearish signal (not neutral - pick a direction)
+2. Confidence level 0-100
+3. A 2-3 sentence investment thesis summarizing the key investment case
+4. Exactly 3 bullet points for the bull case
+5. Exactly 3 bullet points for the bear case
+6. A target price based on short interest, contrarian value opportunities, and catalysts
+
+Return JSON only with exactly these fields:
+{
+  "signal": "bullish" or "bearish",
+  "confidence": int 0-100,
+  "reasoning": "brief reasoning",
+  "thesis": "2-3 sentence investment thesis",
+  "bull_case": ["point 1", "point 2", "point 3"],
+  "bear_case": ["point 1", "point 2", "point 3"],
+  "target_price": float
+}"""
+            ),
+            (
+                "human",
+                "Ticker: {ticker}\nFacts:\n{facts}\n\nGenerate the investment memo JSON."
+            ),
+        ]
+    )
+
+    prompt = template.invoke({
+        "facts": json.dumps(facts, indent=2),
+        "ticker": ticker,
+    })
+
+    def create_default_memo():
+        return MichaelBurryMemoOutput(
+            signal="neutral",
+            confidence=50,
+            reasoning="Insufficient data for full memo",
+            thesis="Unable to generate thesis due to insufficient data.",
+            bull_case=["Data unavailable", "Data unavailable", "Data unavailable"],
+            bear_case=["Data unavailable", "Data unavailable", "Data unavailable"],
+            target_price=target_price_estimate if target_price_estimate else current_price
+        )
+
+    return call_llm(
+        prompt=prompt,
+        pydantic_model=MichaelBurryMemoOutput,
+        agent_name=agent_id,
+        state=state,
+        default_factory=create_default_memo,
+    )
+
+
+def run_michael_burry_with_memo(
+    state: AgentState,
+    agent_id: str = "michael_burry_agent"
+) -> tuple[dict, dict[str, Optional[InvestmentMemo]]]:
+    """
+    Run Michael Burry analysis and generate InvestmentMemo if conviction >= 70%.
+
+    Returns:
+        tuple: (analysis_dict, dict of ticker -> InvestmentMemo or None)
+    """
+    data = state["data"]
+    end_date = data["end_date"]
+    tickers = data["tickers"]
+    api_key = get_api_key_from_state(state, "FINANCIAL_DATASETS_API_KEY")
+
+    memos = {}
+
+    # Run the standard agent first
+    result = michael_burry_agent(state, agent_id)
+
+    for ticker in tickers:
+        # Get current price
+        prices = get_prices(ticker, end_date=end_date, limit=1, api_key=api_key)
+        current_price = prices[0].close if prices else 0.0
+
+        # Get the analysis for this ticker
+        analysis = state["data"]["analyst_signals"].get(agent_id, {}).get(ticker, {})
+        confidence = analysis.get("confidence", 0)
+        signal = analysis.get("signal", "neutral")
+
+        # Check if we should generate a memo
+        if should_generate_memo(confidence) and signal != "neutral":
+            progress.update_status(agent_id, ticker, "Generating investment memo")
+
+            # Get market cap for analysis data
+            market_cap = get_market_cap(ticker, end_date, api_key=api_key)
+
+            # Build analysis data dict
+            analysis_data = {
+                "ticker": ticker,
+                "signal": signal,
+                "confidence": confidence,
+                "market_cap": market_cap,
+            }
+
+            # Generate memo
+            memo_output = generate_michael_burry_memo(
+                ticker=ticker,
+                analysis_data=analysis_data,
+                current_price=current_price,
+                state=state,
+                agent_id=agent_id,
+            )
+
+            # Build key metrics
+            key_metrics = {
+                "signal": signal,
+                "confidence": confidence,
+                "market_cap": market_cap,
+            }
+
+            # Create the InvestmentMemo
+            memo = generate_investment_memo(
+                ticker=ticker,
+                analyst="Michael Burry",
+                signal=memo_output.signal,
+                conviction=memo_output.confidence,
+                current_price=current_price,
+                target_price=memo_output.target_price,
+                time_horizon="medium",
+                thesis=memo_output.thesis,
+                bull_case=memo_output.bull_case,
+                bear_case=memo_output.bear_case,
+                metrics=key_metrics,
+            )
+
+            memos[ticker] = memo
+        else:
+            memos[ticker] = None
+
+    return state["data"]["analyst_signals"].get(agent_id, {}), memos
