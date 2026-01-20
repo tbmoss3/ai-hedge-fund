@@ -29,7 +29,7 @@ export const researchApi = {
       }
 
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/api/inbox${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_BASE_URL}/api/inbox/${queryString ? `?${queryString}` : ''}`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -99,7 +99,7 @@ export const researchApi = {
       if (filters?.analyst) params.append('analyst', filters.analyst);
 
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/api/investments${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_BASE_URL}/api/investments/${queryString ? `?${queryString}` : ''}`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -149,7 +149,7 @@ export const researchApi = {
       if (sortBy) params.append('sort_by', sortBy);
 
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/api/analysts/leaderboard${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_BASE_URL}/api/analysts/leaderboard/${queryString ? `?${queryString}` : ''}`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -205,7 +205,7 @@ export const researchApi = {
    */
   getAnalysts: async (): Promise<string[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analysts`);
+      const response = await fetch(`${API_BASE_URL}/api/analysts/`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
