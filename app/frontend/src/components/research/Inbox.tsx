@@ -45,7 +45,9 @@ export function Inbox() {
         activeFilters.minConviction = Number(minConviction);
       }
 
-      const data = await researchApi.getInbox(activeFilters);
+      const response = await researchApi.getInbox(activeFilters);
+      // Handle both array and {items: []} response formats
+      const data = Array.isArray(response) ? response : (response as any).items || [];
       // Sort by conviction (highest first)
       const sortedMemos = data.sort((a, b) => b.conviction - a.conviction);
       setMemos(sortedMemos);
