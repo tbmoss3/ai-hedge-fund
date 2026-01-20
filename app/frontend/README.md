@@ -34,4 +34,4 @@ This project is for **educational and research purposes only**.
 - Creator assumes no liability for financial losses
 - Consult a financial advisor for investment decisions
 
-By using this software, you agree to use it solely for learning purposes.
+By using this software, you agree to use it solely for learning purposes.# Trigger rebuild
