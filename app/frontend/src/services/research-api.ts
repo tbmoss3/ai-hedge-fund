@@ -36,7 +36,7 @@ export const researchApi = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      return data.memos || data;
+      return data.items || data.memos || data;
     } catch (error) {
       console.error('Failed to fetch inbox:', error);
       throw error;
