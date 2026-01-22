@@ -9,7 +9,7 @@ from src.services.scanner import Scanner, ScanConfig
 from src.utils.analysts import ANALYST_CONFIG
 
 # Backend URL
-BACKEND_URL = "https://ai-hedge-fund-production-1e22.up.railway.app"
+BACKEND_URL = "https://backend-production-5221.up.railway.app"
 
 def submit_memo_to_backend(memo: dict):
     """Submit a memo to the backend API."""
