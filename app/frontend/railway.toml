@@ -1,7 +1,7 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "app/frontend/Dockerfile"
-watchPatterns = ["app/frontend/**"]
+dockerfilePath = "./Dockerfile"
+watchPatterns = ["**"]
 
 [build.args]
 VITE_API_URL = "${{VITE_API_URL}}"
