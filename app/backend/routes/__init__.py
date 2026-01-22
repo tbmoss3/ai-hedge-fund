@@ -11,6 +11,7 @@ from app.backend.routes.api_keys import router as api_keys_router
 from app.backend.routes.inbox import router as inbox_router
 from app.backend.routes.investments import router as investments_router
 from app.backend.routes.analysts import router as analysts_router
+from app.backend.routes.watchlist import router as watchlist_router
 
 # Main API router
 api_router = APIRouter()
@@ -31,3 +32,4 @@ api_router.include_router(api_keys_router, tags=["api-keys"])
 api_router.include_router(inbox_router, prefix="/api", tags=["inbox"])
 api_router.include_router(investments_router, prefix="/api", tags=["investments"])
 api_router.include_router(analysts_router, prefix="/api", tags=["analysts"])
+api_router.include_router(watchlist_router, prefix="/api", tags=["watchlist"])

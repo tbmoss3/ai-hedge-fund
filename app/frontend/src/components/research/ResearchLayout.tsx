@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { researchApi } from '@/services/research-api';
 import {
   Briefcase,
+  Eye,
   Inbox as InboxIcon,
   Menu,
   Moon,
@@ -16,8 +17,9 @@ import { useEffect, useState } from 'react';
 import { Inbox } from './Inbox';
 import { Investments } from './Investments';
 import { Leaderboard } from './Leaderboard';
+import { Watchlist } from './Watchlist';
 
-type View = 'inbox' | 'investments' | 'leaderboard';
+type View = 'inbox' | 'investments' | 'leaderboard' | 'watchlist';
 
 interface NavItem {
   id: View;
@@ -28,6 +30,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'inbox', label: 'Inbox', icon: InboxIcon },
   { id: 'investments', label: 'Portfolio', icon: Briefcase },
+  { id: 'watchlist', label: 'Watchlist', icon: Eye },
   { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
 ];
 
@@ -87,6 +90,8 @@ export function ResearchLayout() {
         return <Inbox />;
       case 'investments':
         return <Investments />;
+      case 'watchlist':
+        return <Watchlist />;
       case 'leaderboard':
         return <Leaderboard />;
       default:

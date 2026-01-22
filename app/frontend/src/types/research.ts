@@ -54,3 +54,12 @@ export interface InvestmentFilters {
 }
 
 export type LeaderboardSortBy = 'win_rate' | 'avg_return' | 'total_memos';
+
+export interface Watchlist {
+  id: number;
+  name: string;
+  tickers: string[];
+  created_at: string;
+  updated_at: string;
+  last_scan_at?: string;
+}

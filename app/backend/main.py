@@ -6,7 +6,9 @@ import asyncio
 from app.backend.routes import api_router
 from app.backend.database.connection import engine
 from app.backend.database.models import Base
+from app.backend.models.watchlist import Watchlist  # Import to register model with Base
 from app.backend.services.ollama_service import ollama_service
+from app.backend.services.scheduler_service import start_scheduler, stop_scheduler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,11 +33,19 @@ app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Startup event to check Ollama availability."""
+    """Startup event to check Ollama availability and start scheduler."""
+    # Start the scheduler for monthly scans
+    try:
+        start_scheduler()
+        logger.info("✓ Scheduler started - monthly scans enabled")
+    except Exception as e:
+        logger.warning(f"Could not start scheduler: {e}")
+
+    # Check Ollama availability
     try:
         logger.info("Checking Ollama availability...")
         status = await ollama_service.check_ollama_status()
-        
+
         if status["installed"]:
             if status["running"]:
                 logger.info(f"✓ Ollama is installed and running at {status['server_url']}")
@@ -49,7 +59,17 @@ async def startup_event():
         else:
             logger.info("ℹ Ollama is not installed. Install it to use local models.")
             logger.info("ℹ Visit https://ollama.com to download and install Ollama")
-            
+
     except Exception as e:
         logger.warning(f"Could not check Ollama status: {e}")
         logger.info("ℹ Ollama integration is available if you install it later")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown event to stop scheduler."""
+    try:
+        stop_scheduler()
+        logger.info("Scheduler stopped")
+    except Exception as e:
+        logger.warning(f"Error stopping scheduler: {e}")

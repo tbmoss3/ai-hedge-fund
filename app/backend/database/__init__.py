@@ -21,4 +21,5 @@ def register_research_models():
     from app.backend.models.memo import Memo
     from app.backend.models.investment import Investment
     from app.backend.models.analyst_stats import AnalystStats
-    return Memo, Investment, AnalystStats
+    from app.backend.models.watchlist import Watchlist
+    return Memo, Investment, AnalystStats, Watchlist

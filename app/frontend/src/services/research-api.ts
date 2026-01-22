@@ -5,6 +5,7 @@ import {
   InvestmentFilters,
   LeaderboardSortBy,
   Memo,
+  Watchlist,
 } from '@/types/research';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -213,6 +214,92 @@ export const researchApi = {
       return data.analysts || data;
     } catch (error) {
       console.error('Failed to fetch analysts:', error);
+      throw error;
+    }
+  },
+
+  // Watchlist API methods
+
+  /**
+   * Fetches the default watchlist
+   * @returns Promise resolving to the Watchlist object
+   */
+  getWatchlist: async (): Promise<Watchlist> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/watchlist/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch watchlist:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Adds tickers to the watchlist
+   * @param tickers Array of ticker symbols to add
+   * @returns Promise resolving to the updated Watchlist
+   */
+  addTickers: async (tickers: string[]): Promise<Watchlist> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/watchlist/tickers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tickers }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to add tickers:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Removes tickers from the watchlist
+   * @param tickers Array of ticker symbols to remove
+   * @returns Promise resolving to the updated Watchlist
+   */
+  removeTickers: async (tickers: string[]): Promise<Watchlist> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/watchlist/tickers`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tickers }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to remove tickers:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Clears all tickers from the watchlist
+   * @returns Promise resolving to the empty Watchlist
+   */
+  clearWatchlist: async (): Promise<Watchlist> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/watchlist/clear`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to clear watchlist:', error);
       throw error;
     }
   },
