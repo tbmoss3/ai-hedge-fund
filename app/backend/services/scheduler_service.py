@@ -1,4 +1,4 @@
-# Scheduler Service - APScheduler for monthly watchlist scans
+# Scheduler Service - APScheduler for quarterly watchlist scans (post-earnings)
 import asyncio
 import logging
 import os
@@ -19,17 +19,19 @@ logger = logging.getLogger(__name__)
 scheduler: Optional[AsyncIOScheduler] = None
 
 
-async def run_monthly_scan():
+async def run_quarterly_scan():
     """
-    Run the monthly watchlist scan.
+    Run the quarterly watchlist scan (post-earnings).
+
+    Scheduled for Jan 15, Apr 15, Jul 15, Oct 15 - after most earnings reports.
 
     This job:
     1. Fetches the watchlist from the database
-    2. Runs the Scanner on all tickers
+    2. Runs the Scanner with Claude Sonnet on all tickers
     3. Submits high-conviction memos to the inbox
     4. Sends email notification with summary
     """
-    logger.info("Starting monthly watchlist scan...")
+    logger.info("Starting quarterly watchlist scan (post-earnings)...")
 
     db = SessionLocal()
     try:
@@ -47,9 +49,9 @@ async def run_monthly_scan():
         from src.services.scanner import Scanner, ScanConfig
         from src.utils.analysts import ANALYST_CONFIG
 
-        # Use DeepSeek for scanning (cost-effective)
-        model_name = os.getenv("SCANNER_MODEL", "deepseek-chat")
-        model_provider = os.getenv("SCANNER_PROVIDER", "DeepSeek")
+        # Use Claude Sonnet for quarterly scans (high-quality analysis)
+        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-20250514")
+        model_provider = os.getenv("SCANNER_PROVIDER", "Anthropic")
 
         # All analysts
         analysts = [
@@ -70,7 +72,7 @@ async def run_monthly_scan():
             universe_name="monthly_watchlist",
         )
 
-        logger.info(f"Scan complete: {result.tickers_scanned} tickers, {result.memos_generated} memos")
+        logger.info(f"Quarterly scan complete: {result.tickers_scanned} tickers, {result.memos_generated} memos")
 
         # 3. Submit memos to inbox
         inbox_service = InboxService(db)
@@ -114,10 +116,10 @@ async def run_monthly_scan():
         else:
             logger.info("Email service not configured, skipping notification")
 
-        logger.info(f"Monthly scan complete: submitted {len(submitted_memos)} memos")
+        logger.info(f"Quarterly scan complete: submitted {len(submitted_memos)} memos")
 
     except Exception as e:
-        logger.error(f"Monthly scan failed: {e}")
+        logger.error(f"Quarterly scan failed: {e}")
         raise
     finally:
         db.close()
@@ -140,8 +142,9 @@ async def run_manual_scan(tickers: list[str]) -> dict:
         from src.services.scanner import Scanner, ScanConfig
         from src.utils.analysts import ANALYST_CONFIG
 
-        model_name = os.getenv("SCANNER_MODEL", "deepseek-chat")
-        model_provider = os.getenv("SCANNER_PROVIDER", "DeepSeek")
+        # Use Claude Sonnet for high-quality analysis
+        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-20250514")
+        model_provider = os.getenv("SCANNER_PROVIDER", "Anthropic")
 
         analysts = [
             key for key, config in ANALYST_CONFIG.items()
@@ -212,7 +215,7 @@ async def run_manual_scan(tickers: list[str]) -> dict:
 
 
 def start_scheduler():
-    """Start the APScheduler with monthly scan job."""
+    """Start the APScheduler with quarterly scan jobs (post-earnings)."""
     global scheduler
 
     if scheduler is not None:
@@ -221,17 +224,18 @@ def start_scheduler():
 
     scheduler = AsyncIOScheduler()
 
-    # Schedule monthly scan: 1st of each month at 6 AM UTC
+    # Schedule quarterly scans: 15th of Jan, Apr, Jul, Oct at 6 AM UTC
+    # These dates are ~2 weeks after quarter-end when most earnings are released
     scheduler.add_job(
-        run_monthly_scan,
-        CronTrigger(day=1, hour=6, minute=0),
-        id="monthly_watchlist_scan",
-        name="Monthly Watchlist Scan",
+        run_quarterly_scan,
+        CronTrigger(month='1,4,7,10', day=15, hour=6, minute=0),
+        id="quarterly_watchlist_scan",
+        name="Quarterly Watchlist Scan (Post-Earnings)",
         replace_existing=True,
     )
 
     scheduler.start()
-    logger.info("Scheduler started - monthly scan scheduled for 1st of each month at 6:00 AM UTC")
+    logger.info("Scheduler started - quarterly scans scheduled for Jan 15, Apr 15, Jul 15, Oct 15 at 6:00 AM UTC")
 
 
 def stop_scheduler():
@@ -251,7 +255,7 @@ def get_next_run_time() -> Optional[datetime]:
     if scheduler is None:
         return None
 
-    job = scheduler.get_job("monthly_watchlist_scan")
+    job = scheduler.get_job("quarterly_watchlist_scan")
     if job and job.next_run_time:
         return job.next_run_time
 

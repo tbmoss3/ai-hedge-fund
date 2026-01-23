@@ -204,7 +204,7 @@ export function Watchlist() {
             <CardContent className="text-center text-muted-foreground">
               <p>Add stock tickers above to start monitoring them.</p>
               <p className="mt-2 text-sm">
-                The system will automatically scan your watchlist on the 1st of each month.
+                Quarterly scans run on Jan 15, Apr 15, Jul 15, Oct 15 (post-earnings).
               </p>
             </CardContent>
           </Card>
@@ -219,7 +219,7 @@ export function Watchlist() {
                 </div>
                 <div className="flex items-center justify-between text-sm mt-2">
                   <span className="text-muted-foreground">Next Scheduled Scan:</span>
-                  <span className="font-medium">1st of next month at 6:00 AM UTC</span>
+                  <span className="font-medium">{watchlist.last_scan_at ? 'Next quarterly date' : 'Jan 15, Apr 15, Jul 15, or Oct 15'}</span>
                 </div>
               </CardContent>
             </Card>

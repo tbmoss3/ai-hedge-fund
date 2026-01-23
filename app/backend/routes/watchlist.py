@@ -159,5 +159,5 @@ async def get_schedule_info():
     next_run = get_next_run_time()
     return ScheduleInfoResponse(
         next_scan=next_run,
-        schedule="Monthly on the 1st at 6:00 AM UTC"
+        schedule="Quarterly (Jan 15, Apr 15, Jul 15, Oct 15) at 6:00 AM UTC"
     )
