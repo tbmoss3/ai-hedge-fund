@@ -50,7 +50,7 @@ async def run_quarterly_scan():
         from src.utils.analysts import ANALYST_CONFIG
 
         # Use Claude Sonnet for quarterly scans (high-quality analysis)
-        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-20250514")
+        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-5-20250929")
         model_provider = os.getenv("SCANNER_PROVIDER", "Anthropic")
 
         # All analysts
@@ -143,7 +143,7 @@ async def run_manual_scan(tickers: list[str]) -> dict:
         from src.utils.analysts import ANALYST_CONFIG
 
         # Use Claude Sonnet for high-quality analysis
-        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-20250514")
+        model_name = os.getenv("SCANNER_MODEL", "claude-sonnet-4-5-20250929")
         model_provider = os.getenv("SCANNER_PROVIDER", "Anthropic")
 
         analysts = [
