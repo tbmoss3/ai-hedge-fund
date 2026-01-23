@@ -7,7 +7,6 @@ from app.backend.services.inbox_service import InboxService
 from app.backend.models.research_schemas import (
     MemoCreateRequest,
     MemoResponse,
-    MemoSummaryResponse,
     MemoListResponse,
     ApprovalResponse,
     RejectionResponse,
@@ -67,7 +66,7 @@ async def list_pending_memos(
         )
 
         return MemoListResponse(
-            items=[MemoSummaryResponse.model_validate(m) for m in memos],
+            items=[MemoResponse.model_validate(m) for m in memos],
             total=total,
             page=page,
             page_size=page_size,

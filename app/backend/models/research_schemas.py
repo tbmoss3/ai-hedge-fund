@@ -78,7 +78,7 @@ class MemoSummaryResponse(BaseModel):
 
 class MemoListResponse(BaseModel):
     """Paginated list of memos"""
-    items: List[MemoSummaryResponse]
+    items: List[MemoResponse]
     total: int
     page: int
     page_size: int
