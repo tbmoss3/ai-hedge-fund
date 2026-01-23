@@ -152,37 +152,41 @@ export function MemoCard({ memo, onApprove, onReject, isLoading = false }: MemoC
           </div>
 
           {/* Bull case */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-green-500" />
-              <h4 className="font-semibold text-green-500">Bull Case</h4>
+          {memo.bull_case && memo.bull_case.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-4 w-4 text-green-500" />
+                <h4 className="font-semibold text-green-500">Bull Case</h4>
+              </div>
+              <ul className="space-y-1 ml-6">
+                {memo.bull_case.map((point, index) => (
+                  <li key={index} className="text-sm text-muted-foreground list-disc">
+                    {point}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-1 ml-6">
-              {memo.bull_case.map((point, index) => (
-                <li key={index} className="text-sm text-muted-foreground list-disc">
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
 
           {/* Bear case */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-red-500" />
-              <h4 className="font-semibold text-red-500">Bear Case</h4>
+          {memo.bear_case && memo.bear_case.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-4 w-4 text-red-500" />
+                <h4 className="font-semibold text-red-500">Bear Case</h4>
+              </div>
+              <ul className="space-y-1 ml-6">
+                {memo.bear_case.map((point, index) => (
+                  <li key={index} className="text-sm text-muted-foreground list-disc">
+                    {point}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-1 ml-6">
-              {memo.bear_case.map((point, index) => (
-                <li key={index} className="text-sm text-muted-foreground list-disc">
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
 
           {/* Key metrics table */}
-          {Object.keys(memo.metrics).length > 0 && (
+          {memo.metrics && Object.keys(memo.metrics).length > 0 && (
             <div>
               <h4 className="font-semibold mb-2">Key Metrics</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
