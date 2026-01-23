@@ -38,8 +38,8 @@ class MemoBase(BaseModel):
     bull_case: List[str] = Field(..., min_length=1, max_length=5)
     bear_case: List[str] = Field(..., min_length=1, max_length=5)
     metrics: Dict[str, Any]
-    current_price: float = Field(..., gt=0)
-    target_price: float = Field(..., gt=0)
+    current_price: float = Field(..., ge=0)
+    target_price: float = Field(..., ge=0)
     time_horizon: TimeHorizon
 
 
