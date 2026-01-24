@@ -18,9 +18,11 @@ import yaml
 from pydantic import BaseModel, Field
 
 from src.agents.memo_schema import InvestmentMemo, should_generate_memo
-from src.data.yfinance_client import get_current_price, get_market_cap, get_price_change
+from src.data.yfinance_client import get_current_price, get_market_cap, get_price_change, get_upcoming_catalysts
 from src.graph.state import AgentState
 from src.utils.analysts import ANALYST_CONFIG
+from src.services.macro_context import get_macro_context
+from src.services.position_sizing import calculate_position_sizing
 
 
 logger = logging.getLogger(__name__)
@@ -299,6 +301,8 @@ class Scanner:
         analyst_key: str,
         signal_data: dict,
         current_price: Optional[float] = None,
+        catalysts: Optional[dict] = None,
+        macro_context: Optional[dict] = None,
     ) -> Optional[InvestmentMemo]:
         """
         Extract an InvestmentMemo from analyst signal data.
@@ -308,6 +312,8 @@ class Scanner:
             analyst_key: Analyst identifier
             signal_data: Signal data from analyst
             current_price: Current stock price
+            catalysts: Pre-fetched catalyst data
+            macro_context: Pre-fetched macro context
 
         Returns:
             InvestmentMemo if signal meets conviction threshold, else None
@@ -325,14 +331,30 @@ class Scanner:
             if current_price is None:
                 current_price = get_current_price(ticker) or 0.0
 
-            # Simple target price estimation based on signal
-            # In a real implementation, this would come from the analyst
+            # Conviction-based target price (instead of fixed 20%)
+            # Higher conviction = higher expected move
+            # Range: 10% (70% conviction) to 40% (100% conviction)
+            conviction_factor = (confidence - 70) / 30  # 0.0 at 70%, 1.0 at 100%
+            price_move = 0.10 + (conviction_factor * 0.30)  # 10% to 40%
+
             if signal == "bullish":
-                target_price = current_price * 1.20  # 20% upside target
+                target_price = current_price * (1 + price_move)
             else:
-                target_price = current_price * 0.80  # 20% downside target
+                target_price = current_price * (1 - price_move)
 
             analyst_name = self.analysts.get(analyst_key, (analyst_key, None))[0]
+
+            # Build conviction breakdown from reasoning
+            conviction_breakdown = [
+                {"component": "analyst_confidence", "score": confidence, "weight": 1.0}
+            ]
+
+            # Calculate position sizing
+            position_sizing = calculate_position_sizing(
+                ticker=ticker,
+                conviction=confidence,
+                signal=signal,
+            )
 
             return InvestmentMemo(
                 ticker=ticker,
@@ -344,8 +366,12 @@ class Scanner:
                 bear_case=[reasoning] if signal == "bearish" else ["See reasoning"],
                 metrics={"signal": signal, "confidence": confidence},
                 current_price=current_price,
-                target_price=target_price,
+                target_price=round(target_price, 2),
                 time_horizon="medium",
+                catalysts=catalysts,
+                conviction_breakdown=conviction_breakdown,
+                macro_context=macro_context,
+                position_sizing=position_sizing,
             )
         except Exception as e:
             logger.error(f"Error extracting memo for {ticker}/{analyst_key}: {e}")
@@ -372,6 +398,19 @@ class Scanner:
         # Get current price once for all analysts
         current_price = get_current_price(ticker)
 
+        # Fetch enrichment data once per ticker
+        try:
+            catalysts = get_upcoming_catalysts(ticker)
+        except Exception as e:
+            logger.warning(f"Could not fetch catalysts for {ticker}: {e}")
+            catalysts = None
+
+        try:
+            macro_context = get_macro_context()
+        except Exception as e:
+            logger.warning(f"Could not fetch macro context: {e}")
+            macro_context = None
+
         for analyst_key, (analyst_name, agent_func) in self.analysts.items():
             try:
                 logger.debug(f"Analyzing {ticker} with {analyst_name}")
@@ -390,6 +429,8 @@ class Scanner:
                         analyst_key,
                         ticker_signal,
                         current_price,
+                        catalysts=catalysts,
+                        macro_context=macro_context,
                     )
                     if memo:
                         memos.append(memo)

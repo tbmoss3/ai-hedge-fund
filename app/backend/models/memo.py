@@ -25,3 +25,9 @@ class Memo(Base):
     status = Column(String(20), default="pending", index=True)  # "pending", "approved", "rejected"
     generated_at = Column(DateTime(timezone=True), nullable=False)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # New enrichment fields (nullable for backward compatibility)
+    catalysts = Column(JSON, nullable=True)  # {next_earnings, ex_dividend_date, etc.}
+    conviction_breakdown = Column(JSON, nullable=True)  # [{component, score, weight}]
+    macro_context = Column(JSON, nullable=True)  # {vix, treasury_10y, market_regime}
+    position_sizing = Column(JSON, nullable=True)  # {recommended_pct, max_risk, volatility}

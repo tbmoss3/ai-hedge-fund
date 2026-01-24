@@ -440,3 +440,61 @@ def get_institutional_holders(ticker: str) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error fetching institutional holders for {ticker}: {e}")
         return pd.DataFrame()
+
+
+def get_upcoming_catalysts(ticker: str) -> dict:
+    """
+    Get upcoming catalysts: earnings dates, ex-dividend dates, etc.
+
+    Args:
+        ticker: Stock ticker symbol
+
+    Returns:
+        Dict with catalyst information
+    """
+    from datetime import datetime, timedelta
+
+    catalysts = {
+        "next_earnings": None,
+        "earnings_confirmed": False,
+        "days_to_earnings": None,
+        "ex_dividend_date": None,
+        "dividend_yield": None,
+    }
+
+    try:
+        yf = _get_yf()
+        stock = yf.Ticker(ticker)
+
+        # Get earnings dates
+        earnings = stock.earnings_dates
+        if earnings is not None and not earnings.empty:
+            now = datetime.now(tz=earnings.index.tz) if hasattr(earnings.index, 'tz') and earnings.index.tz else datetime.now()
+            # Filter for future earnings
+            future_earnings = earnings[earnings.index > now]
+            if not future_earnings.empty:
+                next_date = future_earnings.index[0]
+                catalysts["next_earnings"] = next_date.strftime("%Y-%m-%d")
+                catalysts["days_to_earnings"] = (next_date.replace(tzinfo=None) - datetime.now()).days
+                # Check if confirmed (has EPS estimate)
+                if "EPS Estimate" in future_earnings.columns:
+                    catalysts["earnings_confirmed"] = pd.notna(future_earnings.iloc[0]["EPS Estimate"])
+
+        # Get dividend info
+        info = stock.info
+        if info:
+            ex_div = info.get("exDividendDate")
+            if ex_div:
+                # Convert timestamp to date
+                from datetime import datetime
+                if isinstance(ex_div, (int, float)):
+                    catalysts["ex_dividend_date"] = datetime.fromtimestamp(ex_div).strftime("%Y-%m-%d")
+
+            div_yield = info.get("dividendYield")
+            if div_yield:
+                catalysts["dividend_yield"] = round(div_yield * 100, 2)  # As percentage
+
+    except Exception as e:
+        logger.error(f"Error fetching catalysts for {ticker}: {e}")
+
+    return catalysts

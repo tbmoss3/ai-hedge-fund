@@ -26,6 +26,10 @@ class MemoRepository:
         target_price: float,
         time_horizon: str,
         generated_at: datetime,
+        catalysts: Optional[dict] = None,
+        conviction_breakdown: Optional[list] = None,
+        macro_context: Optional[dict] = None,
+        position_sizing: Optional[dict] = None,
     ) -> Memo:
         """Create a new memo"""
         memo = Memo(
@@ -42,6 +46,10 @@ class MemoRepository:
             time_horizon=time_horizon,
             generated_at=generated_at,
             status="pending",
+            catalysts=catalysts,
+            conviction_breakdown=conviction_breakdown,
+            macro_context=macro_context,
+            position_sizing=position_sizing,
         )
         self.db.add(memo)
         self.db.commit()

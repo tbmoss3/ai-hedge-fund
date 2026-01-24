@@ -107,6 +107,10 @@ class InboxService:
         target_price: float,
         time_horizon: str,
         generated_at: Optional[datetime] = None,
+        catalysts: Optional[dict] = None,
+        conviction_breakdown: Optional[list] = None,
+        macro_context: Optional[dict] = None,
+        position_sizing: Optional[dict] = None,
     ) -> Memo:
         """
         Create a new memo (typically called by the AI analysts).
@@ -124,6 +128,10 @@ class InboxService:
             target_price: Target price
             time_horizon: "short", "medium", or "long"
             generated_at: When the memo was generated (defaults to now)
+            catalysts: Upcoming catalysts (earnings, dividends)
+            conviction_breakdown: Component scores contributing to conviction
+            macro_context: Market environment context
+            position_sizing: Recommended position size
 
         Returns:
             The created memo
@@ -144,6 +152,10 @@ class InboxService:
             target_price=target_price,
             time_horizon=time_horizon,
             generated_at=generated_at,
+            catalysts=catalysts,
+            conviction_breakdown=conviction_breakdown,
+            macro_context=macro_context,
+            position_sizing=position_sizing,
         )
 
         # Update analyst stats

@@ -93,6 +93,10 @@ async def run_quarterly_scan():
                     target_price=memo["target_price"],
                     time_horizon=memo.get("time_horizon", "medium"),
                     generated_at=datetime.utcnow().isoformat(),
+                    catalysts=memo.get("catalysts"),
+                    conviction_breakdown=memo.get("conviction_breakdown"),
+                    macro_context=memo.get("macro_context"),
+                    position_sizing=memo.get("position_sizing"),
                 )
                 submitted_memos.append(created_memo)
                 logger.info(f"Submitted memo for {memo['ticker']} from {memo['analyst']}")
@@ -183,6 +187,10 @@ async def run_manual_scan(tickers: list[str]) -> dict:
                     target_price=memo["target_price"],
                     time_horizon=memo.get("time_horizon", "medium"),
                     generated_at=datetime.utcnow().isoformat(),
+                    catalysts=memo.get("catalysts"),
+                    conviction_breakdown=memo.get("conviction_breakdown"),
+                    macro_context=memo.get("macro_context"),
+                    position_sizing=memo.get("position_sizing"),
                 )
                 submitted_count += 1
             except Exception as e:

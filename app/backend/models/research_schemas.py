@@ -41,6 +41,11 @@ class MemoBase(BaseModel):
     current_price: float = Field(..., ge=0)
     target_price: float = Field(..., ge=0)
     time_horizon: TimeHorizon
+    # New enrichment fields (optional for backward compatibility)
+    catalysts: Optional[Dict[str, Any]] = None
+    conviction_breakdown: Optional[List[Dict[str, Any]]] = None
+    macro_context: Optional[Dict[str, Any]] = None
+    position_sizing: Optional[Dict[str, Any]] = None
 
 
 class MemoCreateRequest(MemoBase):

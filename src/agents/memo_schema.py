@@ -30,6 +30,12 @@ class InvestmentMemo(BaseModel):
     time_horizon: Literal["short", "medium", "long"] = Field(description="Investment time horizon")
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
+    # New enrichment fields
+    catalysts: Optional[dict] = Field(default=None, description="Upcoming catalysts: earnings dates, ex-dividend, etc.")
+    conviction_breakdown: Optional[list[dict]] = Field(default=None, description="Component scores that contributed to conviction")
+    macro_context: Optional[dict] = Field(default=None, description="Current macro environment: VIX, rates, market regime")
+    position_sizing: Optional[dict] = Field(default=None, description="Recommended position size based on conviction and volatility")
+
 
 class MemoGenerationRequest(BaseModel):
     """
@@ -54,6 +60,10 @@ def generate_investment_memo(
     bull_case: list[str],
     bear_case: list[str],
     metrics: dict,
+    catalysts: Optional[dict] = None,
+    conviction_breakdown: Optional[list[dict]] = None,
+    macro_context: Optional[dict] = None,
+    position_sizing: Optional[dict] = None,
 ) -> InvestmentMemo:
     """
     Factory function to create an InvestmentMemo with all required fields.
@@ -70,6 +80,10 @@ def generate_investment_memo(
         current_price=current_price,
         target_price=target_price,
         time_horizon=time_horizon,
+        catalysts=catalysts,
+        conviction_breakdown=conviction_breakdown,
+        macro_context=macro_context,
+        position_sizing=position_sizing,
     )
 
 
