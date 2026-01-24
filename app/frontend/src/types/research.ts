@@ -1,5 +1,36 @@
 // Types for the Human-in-the-Loop Research Platform
 
+export interface MemoCatalysts {
+  next_earnings?: string;
+  earnings_confirmed?: boolean;
+  days_to_earnings?: number;
+  ex_dividend_date?: string;
+  dividend_yield?: number;
+}
+
+export interface MemoPositionSizing {
+  recommended_pct?: number;
+  max_risk_pct?: number;
+  volatility_annual?: number;
+  volatility_daily?: number;
+  sizing_rationale?: string;
+}
+
+export interface MemoMacroContext {
+  vix?: number;
+  vix_level?: string;
+  treasury_10y?: number;
+  sp500_trend?: string;
+  market_regime?: string;
+  fetched_at?: string;
+}
+
+export interface ConvictionBreakdown {
+  component: string;
+  score: number;
+  weight: number;
+}
+
 export interface Memo {
   id: string;
   ticker: string;
@@ -15,6 +46,11 @@ export interface Memo {
   time_horizon: 'short' | 'medium' | 'long';
   status: 'pending' | 'approved' | 'rejected';
   generated_at: string;
+  // New enrichment fields
+  catalysts?: MemoCatalysts;
+  conviction_breakdown?: ConvictionBreakdown[];
+  macro_context?: MemoMacroContext;
+  position_sizing?: MemoPositionSizing;
 }
 
 export interface Investment {

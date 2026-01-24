@@ -202,6 +202,85 @@ export function MemoCard({ memo, onApprove, onReject, isLoading = false }: MemoC
             </div>
           )}
 
+          {/* Catalysts */}
+          {memo.catalysts && (memo.catalysts.next_earnings || memo.catalysts.ex_dividend_date) && (
+            <div>
+              <h4 className="font-semibold mb-2">Upcoming Catalysts</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {memo.catalysts.next_earnings && (
+                  <div className="p-2 bg-blue-500/10 rounded-md">
+                    <div className="text-xs text-muted-foreground">Next Earnings</div>
+                    <div className="font-medium">{memo.catalysts.next_earnings}</div>
+                    {memo.catalysts.days_to_earnings !== null && (
+                      <div className="text-xs text-blue-500">{memo.catalysts.days_to_earnings} days</div>
+                    )}
+                  </div>
+                )}
+                {memo.catalysts.ex_dividend_date && (
+                  <div className="p-2 bg-green-500/10 rounded-md">
+                    <div className="text-xs text-muted-foreground">Ex-Dividend</div>
+                    <div className="font-medium">{memo.catalysts.ex_dividend_date}</div>
+                    {memo.catalysts.dividend_yield && (
+                      <div className="text-xs text-green-500">{memo.catalysts.dividend_yield}% yield</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Position Sizing */}
+          {memo.position_sizing && memo.position_sizing.recommended_pct && (
+            <div>
+              <h4 className="font-semibold mb-2">Position Sizing</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">Recommended</div>
+                  <div className="font-medium">{memo.position_sizing.recommended_pct}%</div>
+                </div>
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">Max Risk</div>
+                  <div className="font-medium">{memo.position_sizing.max_risk_pct}%</div>
+                </div>
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">Volatility</div>
+                  <div className="font-medium">{memo.position_sizing.volatility_annual}%</div>
+                </div>
+              </div>
+              {memo.position_sizing.sizing_rationale && (
+                <div className="text-xs text-muted-foreground mt-2">{memo.position_sizing.sizing_rationale}</div>
+              )}
+            </div>
+          )}
+
+          {/* Macro Context */}
+          {memo.macro_context && memo.macro_context.vix && (
+            <div>
+              <h4 className="font-semibold mb-2">Market Context</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">VIX</div>
+                  <div className={cn('font-medium', memo.macro_context.vix > 25 ? 'text-red-500' : memo.macro_context.vix < 15 ? 'text-green-500' : '')}>
+                    {memo.macro_context.vix}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{memo.macro_context.vix_level}</div>
+                </div>
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">10Y Treasury</div>
+                  <div className="font-medium">{memo.macro_context.treasury_10y}%</div>
+                </div>
+                <div className="p-2 bg-muted/50 rounded-md">
+                  <div className="text-xs text-muted-foreground">Market Regime</div>
+                  <div className={cn('font-medium capitalize',
+                    memo.macro_context.market_regime === 'risk-on' ? 'text-green-500' :
+                    memo.macro_context.market_regime === 'risk-off' ? 'text-red-500' : '')}>
+                    {memo.macro_context.market_regime}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Generated timestamp */}
           <div className="text-xs text-muted-foreground">
             Generated: {new Date(memo.generated_at).toLocaleString()}
