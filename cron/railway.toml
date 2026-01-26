@@ -1,0 +1,11 @@
+# Railway Cron Service Configuration
+# Triggers quarterly watchlist scans after earnings season
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "cron/Dockerfile"
+
+[deploy]
+# Cron schedule: 6 AM UTC on Jan 15, Apr 15, Jul 15, Oct 15
+# (roughly 2 weeks after quarter-end when most earnings are released)
+cronSchedule = "0 6 15 1,4,7,10 *"
