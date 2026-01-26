@@ -4,7 +4,22 @@ Quick scan script that runs analysts and submits memos to the backend.
 """
 import asyncio
 import requests
+import logging
+import sys
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local
+load_dotenv(".env.local")
+
+# Configure logging to show progress
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 from src.services.scanner import Scanner, ScanConfig
 from src.utils.analysts import ANALYST_CONFIG
 
@@ -58,16 +73,19 @@ async def run_scan(tickers: list[str], analysts: list[str] = None):
     print(f"Backend: {BACKEND_URL}")
     print(f"{'='*60}\n")
 
-    # Create scanner with DeepSeek
+    # Create scanner with Claude Sonnet
     config = ScanConfig(conviction_threshold=60)  # Lower threshold for testing
     scanner = Scanner(
         config=config,
         analysts=analysts,
-        model_name="deepseek-chat",
-        model_provider="DeepSeek",
+        model_name="claude-sonnet-4-20250514",
+        model_provider="Anthropic",
     )
 
-    print("Starting scan...")
+    print("Starting scan...", flush=True)
+    print(f"This will make ~{len(tickers) * len(analysts)} API calls. Please wait...", flush=True)
+
+    # Run the scan with progress tracking
     result = await scanner.run_full_scan(
         universe=tickers,
         universe_name="manual_scan",
@@ -99,17 +117,49 @@ async def run_scan(tickers: list[str], analysts: list[str] = None):
     return result
 
 
+def load_watchlist_from_config():
+    """Load custom watchlist from config/universe.yaml."""
+    import yaml
+    import os
+
+    config_path = os.path.join(os.path.dirname(__file__), "config", "universe.yaml")
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        # Get custom watchlist
+        custom = config.get("custom", [])
+        if custom:
+            return custom
+
+        # Fallback to sp500 + russell2000_sample
+        tickers = config.get("sp500", []) + config.get("russell2000_sample", [])
+        return tickers if tickers else ["AAPL", "MSFT", "NVDA"]
+    except Exception as e:
+        print(f"Warning: Could not load universe.yaml: {e}")
+        return ["AAPL", "MSFT", "NVDA"]
+
+
 if __name__ == "__main__":
     import sys
 
-    # Default tickers for a quick test
-    tickers = ["AAPL", "MSFT", "NVDA"]
-
-    # Allow override from command line
+    # Load tickers from config or command line
     if len(sys.argv) > 1:
         tickers = [t.strip().upper() for t in sys.argv[1].split(",")]
+    else:
+        # Load from universe.yaml custom watchlist
+        tickers = load_watchlist_from_config()
+        print(f"Loaded {len(tickers)} tickers from custom watchlist")
 
-    # Use a subset of analysts for faster testing
-    analysts = ["warren_buffett", "michael_burry", "peter_lynch"]
+    # Use all 7 analysts for full scan (or subset for testing)
+    analysts = [
+        "warren_buffett",
+        "charlie_munger",
+        "peter_lynch",
+        "michael_burry",
+        "bill_ackman",
+        "phil_fisher",
+        "stanley_druckenmiller",
+    ]
 
     asyncio.run(run_scan(tickers, analysts))

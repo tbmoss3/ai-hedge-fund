@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import asyncio
+from sqlalchemy import text
 
 from app.backend.routes import api_router
 from app.backend.database.connection import engine
@@ -18,6 +19,46 @@ app = FastAPI(title="AI Hedge Fund API", description="Backend API for AI Hedge F
 
 # Initialize database tables (this is safe to run multiple times)
 Base.metadata.create_all(bind=engine)
+
+
+def run_migrations():
+    """Run database migrations to add missing columns."""
+    migrations = [
+        "ALTER TABLE memos ADD COLUMN IF NOT EXISTS catalysts JSON;",
+        "ALTER TABLE memos ADD COLUMN IF NOT EXISTS conviction_breakdown JSON;",
+        "ALTER TABLE memos ADD COLUMN IF NOT EXISTS macro_context JSON;",
+        "ALTER TABLE memos ADD COLUMN IF NOT EXISTS position_sizing JSON;",
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info(f"Migration OK: {sql[:50]}...")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
+                    logger.info(f"Column already exists, skipping")
+                else:
+                    logger.warning(f"Migration warning: {e}")
+
+
+# Run migrations on startup
+try:
+    run_migrations()
+    logger.info("Database migrations completed")
+except Exception as e:
+    logger.warning(f"Could not run migrations: {e}")
+
+
+@app.get("/api/migrate", tags=["admin"])
+async def trigger_migration():
+    """Manually trigger database migrations."""
+    try:
+        run_migrations()
+        return {"status": "success", "message": "Migrations completed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 # Configure CORS - allow all Vercel preview URLs
 app.add_middleware(

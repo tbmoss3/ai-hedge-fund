@@ -127,6 +127,11 @@ async def create_memo(request: MemoCreateRequest, db: Session = Depends(get_db))
             target_price=request.target_price,
             time_horizon=request.time_horizon.value,
             generated_at=request.generated_at,
+            # Enrichment fields
+            catalysts=request.catalysts,
+            conviction_breakdown=request.conviction_breakdown,
+            macro_context=request.macro_context,
+            position_sizing=request.position_sizing,
         )
         return MemoResponse.model_validate(memo)
     except Exception as e:
